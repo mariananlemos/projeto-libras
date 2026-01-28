@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>STT + VLibras</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0f172a; --fg: #e2e8f0; --muted:#94a3b8; --card:#111827;
+      --primary:#22c55e; --primary-2:#16a34a; --danger:#ef4444; --border:#1f2937;
+    }
+    * { box-sizing: border-box }
+    body { margin:0; background:var(--bg); color:var(--fg); font-family: system-ui, Arial, sans-serif; }
+    .container { max-width: 880px; margin: 32px auto; padding: 0 16px; }
+    .card { background: var(--card); border:1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+    h1 { margin: 0 0 12px; font-size: 22px; }
+    .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    .spacer { flex: 1 }
+    .btn { border:1px solid var(--border); background:#0b1220; color:var(--fg); padding:.65rem 1rem; border-radius: 10px; cursor:pointer; transition:.15s; }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+    .btn.primary { background: var(--primary); color:#0a0f1c; border-color: transparent; }
+    .btn.primary:hover { background: var(--primary-2); color:#eafff2; }
+    .btn.danger { background: #1a0b0b; border-color:#3b0d0d; color:#fecaca; }
+    #status { color: var(--muted); font-size:.95rem; display:flex; align-items:center; gap:.5rem; }
+    #status.loading::before { content:""; width:14px; height:14px; border:2px solid #475569; border-top-color:#cbd5e1; border-radius:50%; display:inline-block; animation: spin .9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #transcrito { padding: 14px 16px; border:1px dashed #334155; border-radius: 10px; min-height: 64px; background:#0a0f1c; line-height:1.5; }
+    .help { color: var(--muted); font-size:.9rem; }
+    audio { width:100%; margin-top: 8px; }
+    label.switch { display:flex; align-items:center; gap:.5rem; color:var(--muted); user-select:none; }
+    input[type="checkbox"] { width:18px; height:18px; }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="card">
+      <h1>Transcrever e traduzir no VLibras</h1>
+
+      <div class="row">
+        <button id="btnStart" class="btn primary">Gravar</button>
+        <button id="btnStop" class="btn danger" disabled>Parar</button>
+        <div class="spacer"></div>
+        <label class="switch">
+          <input id="chkAuto" type="checkbox" checked />
+          Auto-traduzir no VLibras
+        </label>
+        <button id="btnTranslate" class="btn">Traduzir agora</button>
+      </div>
+
+      <div id="status">Aguardando...</div>
+
+      <audio id="player" controls style="display:none;"></audio>
+
+      <h3 style="margin:18px 0 8px;">Texto transcrito</h3>
+      <div id="transcrito" aria-live="polite"></div>
+
+      <p class="help">Dica: o VLibras costuma iniciar a tradução quando há seleção de texto. Se não iniciar automático, clique em “Traduzir agora”.</p>
+    </div>
+  </div>
+
+  <!-- VLibras -->
+  <div vw class="enabled">
+    <div vw-access-button class="active"></div>
+    <div vw-plugin-wrapper>
+      <div class="vw-plugin-top-wrapper"></div>
+    </div>
+  </div>
+
+  <script src="https://vlibras.gov.br/app/vlibras-plugin.js"></script>
+  <script>
+    const widget = new window.VLibras.Widget('https://vlibras.gov.br/app');
+  </script>
+
+  <!-- JS QUE ESTAVA NO main.js EMBUTIDO AQUI -->
+  <script>
+(() => {
+  const btnStart = document.getElementById('btnStart');
+  const btnStop = document.getElementById('btnStop');
+  const btnTranslate = document.getElementById('btnTranslate');
+  const chkAuto = document.getElementById('chkAuto');
+  const statusEl = document.getElementById('status');
+  const player = document.getElementById('player');
+  const transcritoEl = document.getElementById('transcrito');
+
+  let mediaRecorder;
+  let chunks = [];
+
+  function setStatus(msg, loading=false) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('loading', loading);
+  }
+
+  function enableRecordingUI(isRecording) {
+    btnStart.disabled = isRecording;
+    btnStop.disabled = !isRecording;
+  }
+
+  async function startRec() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      chunks = [];
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+      mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      mediaRecorder.onstop = onStopRec;
+      mediaRecorder.start();
+      enableRecordingUI(true);
+      setStatus('Gravando...');
+    } catch (e) {
+      console.error(e);
+      setStatus('Erro ao acessar microfone.');
+    }
+  }
+
+  function stopRec() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      enableRecordingUI(false);
+      setStatus('Processando...', true);
+    }
+  }
+
+  async function onStopRec() {
+    const blobType = chunks[0]?.type || 'audio/webm';
+    const blob = new Blob(chunks, { type: blobType });
+    player.src = URL.createObjectURL(blob);
+    player.style.display = 'block';
+
+    const form = new FormData();
+    const ext = blobType.includes('ogg') ? 'ogg' : 'webm';
+    form.append('audio', blob, `gravacao.${ext}`);
+
+    try {
+      const resp = await fetch('/upload', { method: 'POST', body: form });
+      if (!resp.ok) throw new Error('Falha no upload');
+
+      const data = await resp.json();
+      const texto = (data.texto || '').trim();
+      transcritoEl.textContent = texto || '(sem conteúdo)';
+      setStatus('Transcrição concluída.');
+
+      if (chkAuto.checked && texto) traduzirNoVLibras(transcritoEl);
+
+    } catch (e) {
+      console.error(e);
+      setStatus('Erro ao transcrever.');
+    }
+  }
+
+  // Aciona o VLibras automaticamente
+  function traduzirNoVLibras(el) {
+    try {
+      const btn = document.querySelector('[vw-access-button]');
+      if (btn) btn.click();
+
+      setTimeout(() => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        document.dispatchEvent(new Event('selectionchange'));
+        el.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+        el.dispatchEvent(new Event('keyup', { bubbles: true }));
+
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 250);
+    } catch (e) {
+      console.warn('Falha ao acionar VLibras automaticamente.', e);
+    }
+  }
+
+  btnStart.addEventListener('click', startRec);
+  btnStop.addEventListener('click', stopRec);
+  btnTranslate.addEventListener('click', () => traduzirNoVLibras(transcritoEl));
+
+})();
+  </script>
+
+</body>
+</html>
