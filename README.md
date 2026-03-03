@@ -1,35 +1,35 @@
-# Transcrição de Áudio com VLibras
+# Audio Transcription with VLibras
 
-Aplicação web para transcrição de áudio usando Whisper AI e tradução para Libras através do VLibras.
+Web application for audio transcription using Whisper AI and translation into Libras through VLibras.
 
-## 🚀 Funcionalidades
+## Features
 
-- **Gravação de áudio** diretamente pelo navegador
-- **Transcrição automática** usando OpenAI Whisper
-- **Tradução para Libras** integrada com VLibras
-- Interface responsiva e moderna
-- Suporte a GPU para processamento mais rápido
+- **Audio recording** directly through the browser  
+- **Automatic transcription** using OpenAI Whisper  
+- **Translation to Libras** integrated with VLibras  
+- Responsive and modern interface  
+- GPU support for faster processing  
 
-## 🛠️ Tecnologias Utilizadas
+## Technologies Used
 
-- **Flask** - Framework web Python
-- **OpenAI Whisper** - Modelo de transcrição de áudio
-- **VLibras** - Tradutor para Língua Brasileira de Sinais
-- **PyTorch** - Backend para o Whisper
-- **Flask-CORS** - Suporte a requisições cross-origin
+- **Flask** - Python web framework  
+- **OpenAI Whisper** - Audio transcription model  
+- **VLibras** - Brazilian Sign Language translator  
+- **PyTorch** - Backend for Whisper  
+- **Flask-CORS** - Support for cross-origin requests  
 
-## 📁 Estrutura do Projeto
+## Project Structure
 
 ```
 projeto-libras/
-├── app.py              # Aplicação Flask principal
-├── stt.py              # Módulo de transcrição com Whisper
-├── requirements.txt    # Dependências Python
+├── app.py              # Main Flask application
+├── stt.py              # Transcription module with Whisper
+├── requirements.txt    # Python dependencies
 ├── templates/
-│   └── index.html     # Interface web
-└── uploads/           # Diretório temporário para áudios
+│   └── index.html     # Web interface
+└── uploads/           # Temporary directory for audio files
 ```
 
 ---
 
-Desenvolvido com ❤️ para acessibilidade
+Developed with ❤️ for accessibility
